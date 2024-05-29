@@ -1,1 +1,29 @@
-sample testingfile
+pipeline {
+    agent any
+
+    stages {
+        stage('Delete Old Branches') {
+            steps {
+                script {
+                    def branches = sh(script: 'git for-each-ref --sort=-committerdate refs/remotes/origin --format="%(refname:short) %(committerdate:raw)"', returnStdout: true).trim().readLines()
+
+                    def currentDate = new Date()
+                    def thirtyDaysAgo = currentDate - 30
+
+                    branches.each { branch ->
+                        def branchInfo = branch.tokenize(" ")
+                        def branchName = branchInfo[0]
+                        def branchTimestamp = branchInfo[1].toLong() * 1000
+
+                        def branchDate = new Date(branchTimestamp)
+
+                        if (branchDate.before(thirtyDaysAgo)) {
+                            sh "git push origin --delete ${branchName}"
+                            echo "Deleted old branch: ${branchName}"
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
